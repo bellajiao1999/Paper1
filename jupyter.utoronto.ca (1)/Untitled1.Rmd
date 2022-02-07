@@ -1,0 +1,284 @@
+---
+title: "Final_P3_code"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+1. Import Dataset
+```{r}
+data1 <- read.csv("13100420.csv")
+```
+
+2.Clean the Dataset
+```{r}
+library(tidyverse)
+library(dplyr)
+
+
+colnames(data1)[1] <- "REF_DATE"
+#Remove the unwanted columns
+data_clean <- data1[ , ! names(data1) %in% c("UOM_ID", "units", "SCALAR_ID","STATUS","SYMBOL","TERMINATED","DECIMALS","VECTOR","SCALAR_FACTOR","COORDINATE","Characteristics","DGUID","GEO")]
+
+#Keep only the rows that are not Percentage
+data_clean<-data_clean%>%filter(UOM != "Percentage")%>%select(!UOM)
+
+#Keep only the rows with the detailed marital status of mother
+data_clean<-data_clean%>%filter(Marital.status.of.mother != "Total, marital status of mother")%>%filter(Marital.status.of.mother != "Marital status of mother, not stated")
+
+#Keep only the rows with the detailed age of mother
+data_clean<-data_clean%>%filter(Age.of.mother != "Age of mother, all ages")%>%filter(Age.of.mother != "Age of mother, not stated")%>%filter(!REF_DATE %in% c(1991:2009))
+a <- data_clean %>% group_by(Marital.status.of.mother)%>%summarize(n())
+
+#Transform Categorical Variable
+#Age category
+data_clean<-data_clean %>% mutate(Age.Category = ifelse(Age.of.mother == "Age of mother, under 15 years", 0, ifelse(Age.of.mother == "Age of mother, 15 to 19 years", 1, ifelse(Age.of.mother == "Age of mother, 20 to 24 years", 2, ifelse(Age.of.mother == "Age of mother, 25 to 29 years", 3, ifelse(Age.of.mother == "Age of mother, 30 to 34 years", 4, ifelse(Age.of.mother == "Age of mother, 35 to 39 years", 5, ifelse(Age.of.mother == "Age of mother, 40 to 44 years", 6, 7))))))))
+#Marital status category
+data_clean <- data_clean%>% mutate(marital.status.single = ifelse(Marital.status.of.mother == "Marital status of mother, single (never married)", 1, 0), marital.status.married = ifelse(Marital.status.of.mother == "Marital status of mother, married", 1, 0), marital.status.divorced = ifelse(Marital.status.of.mother == "Marital status of mother, divorced", 1, 0), marital.status.widowed = ifelse(Marital.status.of.mother == "Marital status of mother, widowed", 1, 0))
+
+#creating a new column which assigns an unique number to each observation
+data_clean <- data_clean%>% mutate(observationID = 1:n())
+
+```
+3. Summarize data
+```{r}
+mod1 <- lm(VALUE ~ Age.Category + marital.status.single + marital.status.married + marital.status.divorced + marital.status.widowed,data_clean)
+summary(mod1)
+#Value by age of mother
+
+age_value_data <- data_clean%>%group_by(Age.of.mother, Age.Category)%>%summarize(TotalLiveBirths = sum(VALUE))
+ggplot(age_value_data, aes(x = Age.Category, y = TotalLiveBirths))+geom_point()+ggtitle("Age of Mothers versus Number of Live Births")+labs(y= "Number of Live Births", x = "Age of Mothers") 
+#marital status
+ggplot(data_clean, aes(x = VALUE, y = Marital.status.of.mother))+geom_boxplot()+ggtitle("Marital Status versus Number of Live Births")+labs(y= "Marital Status", x = "Number of Live Births") 
+r <- resid(mod1)
+```
+4. Model Validation
+```{r}
+# create a 50/50 split in the data
+set.seed(1)
+train <- data_clean[sample(1:nrow(data_clean), 220, replace=F), ]
+test <- data_clean[which(!(data_clean$observationID %in% train$observationID)),]
+
+dim(train)
+dim(test)
+#Check similarity between training dataset and test dataset
+mtr <- apply(train[,-c(1,2,3,12)], 2, mean)
+sdtr <- apply(train[,-c(1,2,3,12)], 2, sd)
+
+mtest <- apply(test[,-c(1,2,3,12)], 2, mean)
+sdtest <- apply(test[,-c(1,2,3,12)], 2, sd)
+```
+
+We can take these and add them nicely to a table:
+
+Variable | mean (s.d.) in training | mean (s.d.) in test
+---------|-------------------------|--------------------
+`r names(test)[4]` | `r round(mtr[1],3)` (`r round(sdtr[1],3)`) | `r round(mtest[1],3)` (`r round(sdtest[1],3)`)
+`r names(test)[5]` | `r round(mtr[2],3)` (`r round(sdtr[2],3)`) | `r round(mtest[2],3)` (`r round(sdtest[2],3)`)
+`r names(test)[6]` | `r round(mtr[3],3)` (`r round(sdtr[3],3)`) | `r round(mtest[3],3)` (`r round(sdtest[3],3)`)
+`r names(test)[7]` | `r round(mtr[4],3)` (`r round(sdtr[4],3)`) | `r round(mtest[4],3)` (`r round(sdtest[4],3)`)
+`r names(test)[8]` | `r round(mtr[5],3)` (`r round(sdtr[5],3)`) | `r round(mtest[5],3)` (`r round(sdtest[5],3)`)
+`r names(test)[9]` | `r round(mtr[6],3)` (`r round(sdtr[6],3)`) | `r round(mtest[6],3)` (`r round(sdtest[6],3)`)
+`r names(test)[10]` | `r round(mtr[7],3)` (`r round(sdtr[7],3)`) | `r round(mtest[7],3)` (`r round(sdtest[7],3)`)
+`r names(test)[11]` | `r round(mtr[8],3)` (`r round(sdtr[8],3)`) | `r round(mtest[8],3)` (`r round(sdtest[8],3)`)
+
+Table: Summary statistics in training and test dataset, each of size 220.
+
+
+5. Model Diagnostic
+```{r}
+pairs(data_clean[,5:9])
+plot(data_clean$VALUE ~ fitted(mod1), main="Y versus Y-hat", xlab="Y-hat", ylab="Y")
+abline(a = 0, b = 1)
+lines(lowess(data_clean$VALUE ~ fitted(mod1)), lty=2)
+
+par(mfrow=c(2,4))
+plot(r ~ fitted(mod1), main="Res. vs. Fitted", xlab="Fitted", ylab="res.")
+plot(r ~ data_clean$Age.Category, main="Res. vs. F.Age", xlab="Age", ylab="res")
+plot(r ~ data_clean$marital.status.single, main="Res. vs. F.Single", xlab="Single", ylab="res")
+plot(r ~ data_clean$marital.status.married, main="Res. vs. F.Married", xlab="married", ylab="res")
+plot(r ~ data_clean$marital.status.divorced, main="Res. vs. F.Divorced", xlab="divorced", ylab="res")
+plot(r ~ data_clean$marital.status.widowed, main="Res. vs. F.Widowed", xlab="widowed", ylab="res")
+
+qqnorm(r)
+qqline(r)
+```
+6. Transformation
+```{r}
+#Transformation
+
+#install.packages("car")
+library(car)
+
+data_clean$VALUE <- data_clean$VALUE+0.05
+data_clean$Age.Category <- data_clean$Age.Category+0.05
+
+# first Box-Cox on Y
+boxCox(mod1)
+
+#Transform
+mod2 <- lm(log(VALUE+0.01) ~ Age.Category + marital.status.single + marital.status.married + marital.status.divorced + marital.status.widowed,data_clean)
+summary(mod2)
+
+data_transform <- data_clean%>%mutate(log.value = log(VALUE+0.01))
+```
+
+7. Model Diagnostic (After Transformation)
+```{r}
+r2 <- resid(mod2)
+pairs(data_transform[,5:9])
+plot(data_transform$VALUE ~ fitted(mod2), main="Y versus Y-hat", xlab="Y-hat", ylab="Y")
+abline(a = 0, b = 1)
+lines(lowess(data_transform$VALUE ~ fitted(mod2)), lty=2)
+
+par(mfrow=c(2,4))
+plot(r2 ~ fitted(mod2), main="title", xlab="Fitted", ylab="res.")
+plot(r2 ~ data_transform$Age.Category, main="title", xlab="Age", ylab="res")
+plot(r2 ~ data_transform$marital.status.single, main="title", xlab="Single", ylab="res")
+plot(r2 ~ data_transform$marital.status.married, main="title", xlab="married", ylab="res")
+plot(r2 ~ data_transform$marital.status.divorced, main="title", xlab="divorced", ylab="res")
+plot(r2 ~ data_transform$marital.status.widowed, main="title", xlab="widowed", ylab="res")
+
+qqnorm(r)
+qqline(r)
+```
+
+
+
+
+8. Model Selection
+```{r}
+summary(mod2)
+#Applying Backward Selection
+mod3 <- lm(log(VALUE+0.01) ~ Age.Category + marital.status.single + marital.status.married + marital.status.widowed, data_transform)
+summary(mod3)
+```
+9. Model Diagnostic (After Model Selection)
+```{r}
+r2 <- resid(mod3)
+pairs(data_transform[,5:9])
+plot(data_transform$VALUE ~ fitted(mod3), main="Y versus Y-hat", xlab="Y-hat", ylab="Y")
+abline(a = 0, b = 1)
+lines(lowess(data_transform$VALUE ~ fitted(mod3)), lty=2)
+
+par(mfrow=c(2,4))
+plot(r2 ~ fitted(mod3), main="title", xlab="Fitted", ylab="res.")
+plot(r2 ~ data_transform$Age.Category, main="title", xlab="Age", ylab="res")
+plot(r2 ~ data_transform$marital.status.single, main="title", xlab="Single", ylab="res")
+plot(r2 ~ data_transform$marital.status.married, main="title", xlab="married", ylab="res")
+plot(r2 ~ data_transform$marital.status.divorced, main="title", xlab="divorced", ylab="res")
+plot(r2 ~ data_transform$marital.status.widowed, main="title", xlab="widowed", ylab="res")
+
+qqnorm(r2)
+qqline(r2)
+
+```
+
+10. Check for Leverage Points
+```{r}
+#leverage point
+
+#Information from the model
+n<-length(data_transform$VALUE)
+p<-length(coef(mod3))-1
+
+#Calculate the leverage values& compare to cutoff
+h<-hatvalues(mod3)
+hcut<-2*(p+1)/n
+
+# Which are leverage points
+w1<- which(h > hcut)
+w1
+
+```
+11. Check for Outliers
+```{r}
+#Outliers
+#Calculate standardized residuals and compare to cutoff
+r<-rstandard((mod3))
+w2<-which(r < -2 |r > 2)
+w2
+par(mfrow=c(2,4))
+plot(data_transform[,11]~data_transform[,5], main="log(value) vs age.category", xlab="age.category", ylab="log(value)")
+
+points(data_transform[w2,11]~data_transform[w2,5], col="red", pch=19)
+plot(data_transform[,11]~data_transform[,6], main="log(value) vs marital.single", xlab="marital.single", ylab="log(value)")
+
+points(data_transform[w2,11]~data_transform[w2,6], col="red", pch=19)
+plot(data_transform[,11]~data_transform[,7], main="log(value) vs marital.married", xlab="marital.married", ylab="log(value)")
+
+points(data_transform[w2,11]~data_transform[w2,7], col="red", pch=19)
+plot(data_transform[,11]~data_transform[,8], main="log(value) vs marital.divorced", xlab="marital.divorced", ylab="log(value)")
+
+points(data_transform[w2,11]~data_transform[w2,8], col="red", pch=19)
+plot(data_transform[,11]~data_transform[,9], main="log(value) vs marital.widowed", xlab="marital.widowed", ylab="log(value)")
+
+points(data_transform[w2,11]~data_transform[w2,9], col="red", pch=19)
+
+
+```
+12. Check for Influential Points
+```{r}
+#Influential Points
+
+#Find the Cooks distance
+Dcutoff <- qf(0.5, p+1, n-p-1)
+D <- cooks.distance(mod2)
+which(D > Dcutoff)
+
+# find the DFFITS and compare to cutoff
+DFFITScut <- 2*sqrt((p+1)/n)
+dfs <- dffits(mod2)
+w3 <- which(abs(dfs) > DFFITScut)
+w3
+
+# find the DFBETAS and compare to cutoff (notice the dimension of DFBETAS)
+DFBETAcut <- 2/sqrt(n)
+dfb <- dfbetas(mod2)
+w4 <- which(abs(dfb[,1]) > DFBETAcut)
+w4
+
+w5 <- which(abs(dfb[,2]) > DFBETAcut)
+w5
+
+w6 <- which(abs(dfb[,3]) > DFBETAcut)
+w6
+
+w7 <- which(abs(dfb[,4]) > DFBETAcut)
+w7
+
+#Plot them
+w <- unique(c(w3, w4, w5, w6, w7))
+par(mfrow=c(2,4))
+
+plot(data_transform[,11]~data_transform[,5], main="log(value) vs age.category", xlab="age.category", ylab="log(value)")
+
+points(data_transform[w,11]~data_transform[w,5], col="red", pch=19)
+plot(data_transform[,11]~data_transform[,6], main="log(value) vs marital.single", xlab="marital.single", ylab="log(value)")
+
+points(data_transform[w,11]~data_transform[w,6], col="red", pch=19)
+plot(data_transform[,11]~data_transform[,7], main="log(value) vs marital.married", xlab="marital.married", ylab="log(value)")
+
+points(data_transform[w,11]~data_transform[w,7], col="red", pch=19)
+plot(data_transform[,11]~data_transform[,8], main="log(value) vs marital.divorced", xlab="marital.divorced", ylab="log(value)")
+
+points(data_transform[w,11]~data_transform[w,8], col="red", pch=19)
+plot(data_transform[,11]~data_transform[,9], main="log(value) vs marital.widowed", xlab="marital.widowed", ylab="log(value)")
+
+points(data_transform[w,11]~data_transform[w,9], col="red", pch=19)
+
+```
+13. Check for multi-collinearity
+```{r}
+#Check multi collinearity in each model
+#install.packages("car")
+library(car)
+vif(mod1)
+vif(mod2)
+vif(mod3)
+```
+

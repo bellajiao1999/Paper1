@@ -1,0 +1,52 @@
+---
+title: "REpart2"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=TRUE}
+if(!require(tidyverse)){
+  install.packages("tidyverse", dependencies = TRUE)
+  library(tidyverse)
+}
+
+data1 <- read.csv("starwars.csv")
+class(data1)
+dim(data1)
+
+#I first need to remove the columns with unwanted variables
+data2 <- data1[ , ! names(data1) %in% c("hair_color", "eye_color", "skin_color")]  
+
+#now to remove rows that are not human
+data<-subset(data2, species == "Human")
+
+#Adding new columns
+data <- data %>%
+  add_column(BMI = (.$mass / (.$height /100) ^2),
+             Range = if_else(BMI>24.88711, "ABOVE", "BELOW"))
+
+#Filtering out rows with missing values
+any(is.na(data))
+data <- na.omit(data)
+
+#Finding the median
+median(data[,10])
+
+#Export the cleaned dataset
+?write.table
+  write.table(data, file = "Final_Cleaned.csv", sep=",")
+  
+print(data)
+
+
+
+
+```
+
+
+```{r}
+
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

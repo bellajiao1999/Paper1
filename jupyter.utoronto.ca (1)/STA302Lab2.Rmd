@@ -1,0 +1,162 @@
+---
+title: "Module 2 In-Class Lab #2"
+date: "due Thursday September 30 by 11:59PM ET"
+output: pdf_document
+---
+
+# General Instructions
+
+1. Take the first 5 minutes to introduce yourselves, telling everyone your name, your degree program, and one thing you're excited to do on the weekend.\
+
+2. Decide amongst yourselves on the role that each student will perform and add the names to the role below:
+    - Timekeeper: ADD NAME HERE
+    - Submission Manager: ADD NAME HERE
+    - Live Coder: ADD NAME HERE
+    - Moderator: ADD NAME HERE
+    - (if needed) Help finder: ADD NAME HERE\
+  
+3. Get set up for conducting your roles by making sure everyone can see the shared screen (shared by the LIVE CODER) and that everyone knows who will be contributing verbally and/or by chat and can see/hear each other (MODERATOR should keep track).  
+
+    - The SUBMISSION MANAGER should use this time to access the Crowdmark link and create a group submission link by adding the group members to the group.
+
+4. To get help at any time, anyone in the group (or the HELP FINDER if there is one) can tag the instructor by typing @Katherine Daignault in the chat with a question. The TIMEKEEPER should keep track of how long the group spends on each part so that the group will be able to finish the lab during class time.
+
+# Submission Instructions
+
+All students will receive an email from Crowdmark which will be used to submit the knitted PDF you produce in your group. YOU WILL NEED TO CREATE YOUR GROUP BEFORE SUBMITTING. To do this:  
+
+  1. The SUBMISSION MANAGER on the team should use the emailed link to access the assignment page on Crowdmark.\
+  2. There will be an option to add group members to the submission.\
+  3. Using the names you've entered for the group roles above, search for your teammates and add them to your group.\
+  4. All teammembers will receive an email from Crowdmark stating they have been added to the group.\
+  5. At the end of the lab (or before the submission deadline), the SUBMISSION MANAGER should upload the PDF you create from this document to Crowdmark using the group submission link that was created. This will submit the lab for everyone :)
+
+# Lab 2 - Conditional Nature of Regression
+
+## Summary
+
+In this lab, we will be working on two different aspects of regression models. First, we will look more deeply into the conditional interpretation of the regression coefficients by looking into subsets of a dataset. Second, we will practice interpreting a parameter of a regression model by trying to write out the interpretation using extremely simple words.  
+
+The dataset for this lab are various measurements taken on 250 men to better understand how Percent Body Fat is related to physical attributes of an individual. While the dataset contains many variables, we will only be working with:  
+
+  - Pct.BF = percent body fat (Y)
+  - Waist = waist size of the individual (measured in inches)
+  - Height = height of the individual (measured in inches)  
+
+## Part 1: Illustrating the Conditional Nature of Multiple Regression
+
+### Step 1 - Load your data and perform an exploratory data analysis.
+
+In this step, you'll want 1) to read in the body_fat_complete.csv file, 2) find numerical summaries to describe the centre and spread of these variables, 3) plot the 3 variables listed above, and 4) make two scatterplots (1 between Pct.BF and waist, and 1 between Pct.BF and height).\
+
+```{r}
+# load you data and find numerical summaries of the variables
+
+```
+
+
+```{r}
+# make your plots here
+# try to arrange them in grids that group similar plots together
+# par(mfrow=c(2,2))  # would create a 2x2 grid of plots if using base R plot functions
+
+```
+
+
+*What do you see in the univariate plots of each variable? What can you say about each predictor's relationship with the response, Percent Body Fat?*\  
+
+ADD COMMENT HERE  
+
+### Step 2 - Fit some linear regression models
+
+In this step, we will look at some regression relationships. You should fit 3 different linear regression models to Percent Body Fat:  
+
+  - a simple linear model using Height as a predictor
+  - a simple linear model using Waist as a predictor
+  - a two-predictor model using both Height and Waist as predictors.\  
+
+
+```{r}
+# fit your first linear model here
+
+```
+
+```{r}
+# fit your second linear model here
+
+```
+
+```{r}
+# fit your two predictor model here
+
+```
+
+
+*What do you notice to be different between the coefficients of the models?*
+
+
+ADD COMMENT HERE
+
+### Step 3 - Looking at simple relationships among a subset
+
+This step will let us see why regression has this conditional aspect to it when we include two or predictors in a model. First you will need to plot a scatterplot of Percent Body Fat versus Height, adding a line representing the simple regression relationship from step 2. Then, get a subset of your dataset that correspond to only individuals with a Waist size between 30-32 (inclusive). Add these points to your plot in a different color. \
+
+
+```{r}
+# make your scatterplot with the added regression line
+# if using base R to plot, you can add the line using 
+# abline(a = intercept, b = slope, col="blue")
+
+# to get the subset of individuals with these waist sizes, you may use an if statement
+# you may also try the which() function, used as below, or another way if you know one
+# subset <- data[which(data$Waist >= 30 & data$Waist <= 32), ]
+
+# by using the data in subset, add points in color to your plot above (see lab 1)
+
+```
+
+
+Now, let's fit the relationship between Percent Body Fat and Height among only men with waist sizes between 30 and 32 inches.\
+
+
+```{r}
+# fit your model here
+
+```
+
+Copy-paste your plot code from the beginning of this step, and add this regression relationship to your plot using the same colour as your points.\
+
+
+```{r}
+# copy paste your code from above
+
+# add a line with your regression relationship on the subset
+# if using base R to plot, you can do this using abline(a = intercept, b = slope, col="blue")
+
+```
+
+
+(OPTIONAL) Repeat this process by creating a new subset of your data for men with waist sizes between 40-42 inches (inclusive) and fitting a simple linear relationship on this subset between Pct. BF and Height. Copy-paste your plot code from the previous code chunk, highlight these new points in a different colour (in addition to the ones before) and add a line representing this relationship in a colour to match your points.\
+
+
+```{r}
+# OPTIONAL PART
+# copy-paste plot code from previous chunk
+
+# create the new subset and fit the linear model
+
+# update plot with new coloured points and line for this subset
+
+```
+
+
+*Using these plots to guide your thinking, explain why the simple linear model using height as a predictor showed a very flat slope, but the 2-predictor model estimated a much stronger decreasing relationship for Height.*\  
+
+ADD COMMENTS HERE
+
+## Part 2: Interpreting your slope in extreme simple language
+
+The only task for this part is to write out a correct interpretation of the coefficient for Height in the two-predictor model you fit in Part 1, step 2, but using only extremely simple words. Using this XKCD word checker <https://xkcd.com/simplewriter/>, you will write out an interpretation for this coefficient in the text box at this site. Words that are not extremely simple will be highlighted in red. You should attempt to write out a complete and correct interpretation of this coefficient with no red words (i.e. using extremely simple language). Once finished, copy your interpretation from the XKCD site to here.
+
+
+ADD XKCD INTERPRETATION HERE

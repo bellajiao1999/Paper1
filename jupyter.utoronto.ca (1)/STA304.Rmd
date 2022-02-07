@@ -1,0 +1,31 @@
+---
+title: "STA304_tutorial2"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+
+```{r cars}
+data <- read.csv("Marriage_Licence_Statistics_Data.csv")
+
+#Remove the unwanted column
+data_clean <- data[ , ! names(data) %in% c("UOM_ID", "SYMBOL")]
+
+
+```
+
+## Including Plots
+
+```{r pressure, echo=FALSE}
+library(tidyverse)
+#Graph Data
+ggplot(data_clean, aes(y = MARRIAGE_LICENSES, x = TIME_PERIOD))+geom_point()
+```
+

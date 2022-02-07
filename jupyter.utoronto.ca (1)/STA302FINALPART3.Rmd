@@ -1,0 +1,208 @@
+---
+title: "Untitled"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+install.packages('MikTex')
+install.packages('tynitex')
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+library(tidyverse)
+#library(ggplot2)
+#library(MASS)
+#This part is to clean the dataset (detailed explanations for this part can be found in "Data source")
+data1 <- read.csv("13100420.csv")
+colnames(data1)[1] <- "REF_DATE"
+#Remove the unwanted columns
+data_clean <- data1[ , ! names(data1) %in% c("UOM_ID", "units", "SCALAR_ID","STATUS","SYMBOL","TERMINATED","VECTOR","DECIMALS","SCALAR_FACTOR","COORDINATE","Characteristics","DGUID","GEO")]
+
+#Keep only the rows that are not Percentage
+data_clean<-data_clean%>%filter(UOM != "Percentage")%>%select(!UOM)
+
+#Keep only the rows with the detailed marital status of mother
+data_clean<-data_clean%>%filter(Marital.status.of.mother != "Total, marital status of mother")%>%filter(Marital.status.of.mother != "Marital status of mother, not stated")
+
+#Keep only the rows with the detailed age of mother
+data_clean<-data_clean%>%filter(Age.of.mother != "Age of mother, all ages")%>%filter(Age.of.mother != "Age of mother, not stated")%>%filter(!REF_DATE %in% c(1991:2009))
+a <- data_clean %>% group_by(Marital.status.of.mother)%>%summarize(n())
+#Transform Categorical Variable
+#Age category
+data_clean<-data_clean %>% mutate(Age.Category = ifelse(Age.of.mother == "Age of mother, under 15 years", 0, ifelse(Age.of.mother == "Age of mother, 15 to 19 years", 1, ifelse(Age.of.mother == "Age of mother, 20 to 24 years", 2, ifelse(Age.of.mother == "Age of mother, 25 to 29 years", 3, ifelse(Age.of.mother == "Age of mother, 30 to 34 years", 4, ifelse(Age.of.mother == "Age of mother, 35 to 39 years", 5, ifelse(Age.of.mother == "Age of mother, 40 to 44 years", 6, 7))))))))
+#Marital status category
+data_clean <- data_clean%>% mutate(marital.status.single = ifelse(Marital.status.of.mother == "Marital status of mother, single (never married)", 1, 0), marital.status.married = ifelse(Marital.status.of.mother == "Marital status of mother, married", 1, 0), marital.status.divorced = ifelse(Marital.status.of.mother == "Marital status of mother, divorced", 1, 0), marital.status.widowed = ifelse(Marital.status.of.mother == "Marital status of mother, widowed", 1, 0))
+
+#Value by age of mother
+age_value_data <- data_clean%>%group_by(Age.of.mother, Age.Category)%>%summarize(total = sum(VALUE))
+ggplot(age_value_data, aes(x = Age.Category, y = total))+geom_point()
+#marital status
+ggplot(data_clean, aes(x = Marital.status.of.mother, y = VALUE))+geom_boxplot()
+
+#linear regression
+mod <- lm(VALUE ~ Age.Category + marital.status.single + marital.status.married + marital.status.divorced + marital.status.widowed,data_clean)
+summary(mod)
+r <- resid(mod)
+#Check condition
+pairs(data_clean[,5:9])
+plot(data_clean$VALUE ~ fitted(mod), main="Y versus Y-hat", xlab="Y-hat", ylab="Y")
+abline(a = 0, b = 1)
+lines(lowess(data_clean$VALUE ~ fitted(mod)), lty=2)
+
+par(mfrow=c(2,4))
+plot(r ~ fitted(mod), main="title", xlab="Fitted", ylab="res.")
+plot(r ~ data_clean$Age.Category, main="title", xlab="Age", ylab="res")
+plot(r ~ data_clean$marital.status.single, main="title", xlab="Single", ylab="res")
+plot(r ~ data_clean$marital.status.married, main="title", xlab="married", ylab="res")
+plot(r ~ data_clean$marital.status.divorced, main="title", xlab="divorced", ylab="res")
+plot(r ~ data_clean$marital.status.widowed, main="title", xlab="widowed", ylab="res")
+
+qqnorm(r)
+qqline(r)
+
+#Transformation
+mod2 <- lm(log(VALUE+0.01) ~ Age.Category + marital.status.single + marital.status.married + marital.status.divorced + marital.status.widowed,data_clean)
+summary(mod2)
+
+data_transform <- data_clean%>%mutate(log.value = log(VALUE+0.01))
+#leverage point
+n<-length(data_clean$VALUE)
+p<-length(coef(mod2))-1
+h<-hatvalues(mod2)
+hcut<-2*(p+1)/n
+w1<- which(h > hcut)
+w1
+r<-rstandard((mod2))
+w2<-which(r < -2 |r > 2)
+w2
+par(mfrow=c(2,4))
+plot(data_transform[,10]~data_transform[,5], main="log(value) vs age.category", xlab="age.category", ylab="log(value)")
+points(data_transform[w2,10]~data_transform[w2,5], col="red", pch=19)
+plot(data_transform[,10]~data_transform[,6], main="log(value) vs marital.single", xlab="marital.single", ylab="log(value)")
+points(data_transform[w2,10]~data_transform[w2,6], col="red", pch=19)
+plot(data_transform[,10]~data_transform[,7], main="log(value) vs marital.married", xlab="marital.married", ylab="log(value)")
+points(data_transform[w2,10]~data_transform[w2,7], col="red", pch=19)
+plot(data_transform[,10]~data_transform[,8], main="log(value) vs marital.divorced", xlab="marital.divorced", ylab="log(value)")
+points(data_transform[w2,10]~data_transform[w2,8], col="red", pch=19)
+plot(data_transform[,10]~data_transform[,9], main="log(value) vs marital.widowed", xlab="marital.widowed", ylab="log(value)")
+points(data_transform[w2,10]~data_transform[w2,9], col="red", pch=19)
+
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r}
+#library(ggplot2)
+#library(MASS)
+#This part is to clean the dataset (detailed explanations for this part can be found in "Data source")
+data1 <- read.csv("13100420.csv")
+colnames(data1)[1] <- "REF_DATE"
+#Remove the unwanted columns
+data_clean <- data1[ , ! names(data1) %in% c("UOM_ID", "units", "SCALAR_ID","STATUS","SYMBOL","TERMINATED","VECTOR","DECIMALS","SCALAR_FACTOR","COORDINATE","Characteristics","DGUID","GEO")]
+
+#Keep only the rows that are not Percentage
+data_clean<-data_clean%>%filter(UOM != "Percentage")%>%select(!UOM)
+
+#Keep only the rows with the detailed marital status of mother
+data_clean<-data_clean%>%filter(Marital.status.of.mother != "Total, marital status of mother")%>%filter(Marital.status.of.mother != "Marital status of mother, not stated")
+
+#Keep only the rows with the detailed age of mother
+data_clean<-data_clean%>%filter(Age.of.mother != "Age of mother, all ages")%>%filter(Age.of.mother != "Age of mother, not stated")%>%filter(!REF_DATE %in% c(1991:2009))
+a <- data_clean %>% group_by(Marital.status.of.mother)%>%summarize(n())
+#Transform Categorical Variable
+#Age category
+data_clean<-data_clean %>% mutate(Age.Category = ifelse(Age.of.mother == "Age of mother, under 15 years", 0, ifelse(Age.of.mother == "Age of mother, 15 to 19 years", 1, ifelse(Age.of.mother == "Age of mother, 20 to 24 years", 2, ifelse(Age.of.mother == "Age of mother, 25 to 29 years", 3, ifelse(Age.of.mother == "Age of mother, 30 to 34 years", 4, ifelse(Age.of.mother == "Age of mother, 35 to 39 years", 5, ifelse(Age.of.mother == "Age of mother, 40 to 44 years", 6, 7))))))))
+#Marital status category
+data_clean <- data_clean%>% mutate(marital.status.single = ifelse(Marital.status.of.mother == "Marital status of mother, single (never married)", 1, 0), marital.status.married = ifelse(Marital.status.of.mother == "Marital status of mother, married", 1, 0), marital.status.divorced = ifelse(Marital.status.of.mother == "Marital status of mother, divorced", 1, 0), marital.status.widowed = ifelse(Marital.status.of.mother == "Marital status of mother, widowed", 1, 0))
+
+#Value by age of mother
+age_value_data <- data_clean%>%group_by(Age.of.mother, Age.Category)%>%summarize(total = sum(VALUE))
+ggplot(age_value_data, aes(x = Age.Category, y = total))+geom_point()
+#marital status
+ggplot(data_clean, aes(x = Marital.status.of.mother, y = VALUE))+geom_boxplot()
+
+#linear regression
+mod <- lm(VALUE ~ Age.Category + marital.status.single + marital.status.married + marital.status.divorced + marital.status.widowed,data_clean)
+summary(mod)
+r <- resid(mod)
+#Check condition
+pairs(data_clean[,5:9])
+plot(data_clean$VALUE ~ fitted(mod), main="Y versus Y-hat", xlab="Y-hat", ylab="Y")
+abline(a = 0, b = 1)
+lines(lowess(data_clean$VALUE ~ fitted(mod)), lty=2)
+
+par(mfrow=c(2,4))
+plot(r ~ fitted(mod), main="title", xlab="Fitted", ylab="res.")
+plot(r ~ data_clean$Age.Category, main="title", xlab="Age", ylab="res")
+plot(r ~ data_clean$marital.status.single, main="title", xlab="Single", ylab="res")
+plot(r ~ data_clean$marital.status.married, main="title", xlab="married", ylab="res")
+plot(r ~ data_clean$marital.status.divorced, main="title", xlab="divorced", ylab="res")
+plot(r ~ data_clean$marital.status.widowed, main="title", xlab="widowed", ylab="res")
+
+qqnorm(r)
+qqline(r)
+
+#Transformation
+mod2 <- lm(log(VALUE+0.01) ~ Age.Category + marital.status.single + marital.status.married + marital.status.divorced + marital.status.widowed,data_clean)
+summary(mod2)
+
+data_transform <- data_clean%>%mutate(log.value = log(VALUE+0.01))
+#Check condition
+r2 <- resid(mod2)
+pairs(data_transform[,5:9])
+plot(data_clean$VALUE ~ fitted(mod2), main="Y versus Y-hat", xlab="Y-hat", ylab="Y")
+abline(a = 0, b = 1)
+lines(lowess(data_clean$VALUE ~ fitted(mod2)), lty=2)
+
+par(mfrow=c(2,4))
+plot(r2 ~ fitted(mod2), main="title", xlab="Fitted", ylab="res.")
+plot(r2 ~ data_transform$Age.Category, main="title", xlab="Age", ylab="res")
+plot(r2 ~ data_transform$marital.status.single, main="title", xlab="Single", ylab="res")
+plot(r2 ~ data_transform$marital.status.married, main="title", xlab="married", ylab="res")
+plot(r2 ~ data_transform$marital.status.divorced, main="title", xlab="divorced", ylab="res")
+plot(r2 ~ data_transform$marital.status.widowed, main="title", xlab="widowed", ylab="res")
+
+qqnorm(r)
+qqline(r)
+#leverage point
+n<-length(data_clean$VALUE)
+p<-length(coef(mod2))-1
+h<-hatvalues(mod2)
+hcut<-2*(p+1)/n
+w1<- which(h > hcut)
+w1
+r<-rstandard((mod2))
+w2<-which(r < -2 |r > 2)
+w2
+par(mfrow=c(2,4))
+plot(data_transform[,10]~data_transform[,5], main="log(value) vs age.category", xlab="age.category", ylab="log(value)")
+points(data_transform[w2,10]~data_transform[w2,5], col="red", pch=19)
+plot(data_transform[,10]~data_transform[,6], main="log(value) vs marital.single", xlab="marital.single", ylab="log(value)")
+points(data_transform[w2,10]~data_transform[w2,6], col="red", pch=19)
+plot(data_transform[,10]~data_transform[,7], main="log(value) vs marital.married", xlab="marital.married", ylab="log(value)")
+points(data_transform[w2,10]~data_transform[w2,7], col="red", pch=19)
+plot(data_transform[,10]~data_transform[,8], main="log(value) vs marital.divorced", xlab="marital.divorced", ylab="log(value)")
+points(data_transform[w2,10]~data_transform[w2,8], col="red", pch=19)
+plot(data_transform[,10]~data_transform[,9], main="log(value) vs marital.widowed", xlab="marital.widowed", ylab="log(value)")
+points(data_transform[w2,10]~data_transform[w2,9], col="red", pch=19)
+
+print(data_tr)
+```
+
